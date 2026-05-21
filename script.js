@@ -16,14 +16,17 @@ const progressBar = document.getElementById("progressBarInner");
 const progressText = document.getElementById("progressText");
 const resultsDiv = document.getElementById("results");
 
+// Clicking dropzone opens file dialog
 dropzone.onclick = () => fileInput.click();
 
-fileInput.onchange = (e) => {
+// File input change
+fileInput.onchange = async (e) => {
     files = [...e.target.files];
     showPreview();
 };
 
-dropzone.ondrop = (e) => {
+// Drag & drop
+dropzone.ondrop = async (e) => {
     e.preventDefault();
     files = [...e.dataTransfer.files];
     showPreview();
@@ -31,7 +34,7 @@ dropzone.ondrop = (e) => {
 
 dropzone.ondragover = (e) => e.preventDefault();
 
-// Word count preview (lightweight, just counts lines)
+// Word count preview
 async function showPreview() {
     if (files.length === 0) return;
 
@@ -69,26 +72,6 @@ processBtn.onclick = async () => {
     worker.postMessage({
         type: 'process',
         text: bigText
-    });
-};
-
-    // Read all files into one big array of lines
-    let rawWords = [];
-    for (const file of files) {
-        const text = await file.text();
-        rawWords.push(...text.split(/\r?\n/));
-    }
-
-    // Reset UI
-    resultsDiv.style.display = "none";
-    progressContainer.style.display = "block";
-    progressBar.style.width = "0%";
-    progressText.textContent = "0% complete";
-
-    // Send data to worker
-    worker.postMessage({
-        type: 'process',
-        rawWords: rawWords
     });
 };
 
