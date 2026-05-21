@@ -40,8 +40,7 @@ document.getElementById("dropzone").ondrop = (e) => {
 
 document.getElementById("dropzone").ondragover = (e) => e.preventDefault();
 
-
-// ⭐ WORD COUNT PREVIEW
+// Word count preview
 async function showPreview() {
     if (files.length === 0) return;
 
@@ -57,8 +56,7 @@ async function showPreview() {
         `Total words detected across all files: ${count.toLocaleString()}`;
 }
 
-
-// ⭐ MAIN PROCESSING
+// Main processing
 document.getElementById("processBtn").onclick = async () => {
     if (files.length === 0) return alert("No files selected.");
 
@@ -151,7 +149,7 @@ Filters applied:
     document.getElementById("downloadStats").onclick = () =>
         downloadFile("stats.txt", stats);
 
-    // ⭐ ZIP DOWNLOAD
+    // ZIP download
     document.getElementById("downloadZip").onclick = () => {
         const zip = new JSZip();
         zip.file("combined.txt", cleanList);
@@ -170,7 +168,6 @@ Filters applied:
         progressContainer.style.display = "none";
     }, 800);
 };
-
 
 // Helper: download a single file
 function downloadFile(filename, content) {
