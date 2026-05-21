@@ -1,172 +1,125 @@
-// Clean and normalise a single word
-function cleanWord(word) {
-    word = word.trim();
-    if (!word) return "";
-
-    // Remove accents
-    word = word.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-    // Lowercase
-    word = word.toLowerCase();
-
-    // Remove non-ASCII
-    word = word.replace(/[^\x20-\x7E]/g, "");
-
-    // Remove digits
-    word = word.replace(/\d/g, "");
-
-    // Remove punctuation (keep only a–z)
-    word = word.replace(/[^a-z]/g, "");
-
-    return word;
-}
-
 let files = [];
+let worker = new Worker('worker.js');
+
+let latestClean = "";
+let latestRejected = "";
+let latestStats = "";
 
 // UI handlers
-document.getElementById("dropzone").onclick = () =>
-    document.getElementById("fileInput").click();
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const processBtn = document.getElementById("processBtn");
+const previewDiv = document.getElementById("preview");
+const previewText = document.getElementById("previewText");
+const progressContainer = document.getElementById("progressContainer");
+const progressBar = document.getElementById("progressBarInner");
+const progressText = document.getElementById("progressText");
+const resultsDiv = document.getElementById("results");
 
-document.getElementById("fileInput").onchange = (e) => {
+dropzone.onclick = () => fileInput.click();
+
+fileInput.onchange = (e) => {
     files = [...e.target.files];
     showPreview();
 };
 
-document.getElementById("dropzone").ondrop = (e) => {
+dropzone.ondrop = (e) => {
     e.preventDefault();
     files = [...e.dataTransfer.files];
     showPreview();
 };
 
-document.getElementById("dropzone").ondragover = (e) => e.preventDefault();
+dropzone.ondragover = (e) => e.preventDefault();
 
-// Word count preview
+// Word count preview (lightweight, just counts lines)
 async function showPreview() {
     if (files.length === 0) return;
 
     let count = 0;
-
     for (const file of files) {
         const text = await file.text();
         count += text.split(/\r?\n/).length;
     }
 
-    document.getElementById("preview").style.display = "block";
-    document.getElementById("previewText").textContent =
+    previewDiv.style.display = "block";
+    previewText.textContent =
         `Total words detected across all files: ${count.toLocaleString()}`;
 }
 
-// Main processing
-document.getElementById("processBtn").onclick = async () => {
-    if (files.length === 0) return alert("No files selected.");
+// Main processing – offloaded to worker
+processBtn.onclick = async () => {
+    if (files.length === 0) {
+        alert("No files selected.");
+        return;
+    }
 
+    // Read all files into one big array of lines
     let rawWords = [];
-
-    // Read all files
     for (const file of files) {
         const text = await file.text();
         rawWords.push(...text.split(/\r?\n/));
     }
 
-    let accepted = new Set();
-    let rejected = [];
-
-    let rej_empty = 0;
-    let rej_short = 0;
-    let rej_unsalvageable = 0;
-
-    // Show progress bar
-    const progressContainer = document.getElementById("progressContainer");
-    const bar = document.getElementById("progressBarInner");
-    const text = document.getElementById("progressText");
-
+    // Reset UI
+    resultsDiv.style.display = "none";
     progressContainer.style.display = "block";
-    bar.style.width = "0%";
-    text.textContent = "0% complete";
+    progressBar.style.width = "0%";
+    progressText.textContent = "0% complete";
 
-    // Process words with progress updates
-    for (let i = 0; i < rawWords.length; i++) {
-        const original = rawWords[i];
-        let cleaned = cleanWord(original);
+    // Send data to worker
+    worker.postMessage({
+        type: 'process',
+        rawWords: rawWords
+    });
+};
 
-        if (!cleaned) {
-            rej_empty++;
-            rejected.push(original);
-        } else if (cleaned.length < 4) {
-            rej_short++;
-            rejected.push(original);
-        } else if (/[^a-z]/.test(cleaned)) {
-            rej_unsalvageable++;
-            rejected.push(original);
-        } else {
-            accepted.add(cleaned);
-        }
+// Handle messages from worker
+worker.onmessage = (e) => {
+    const msg = e.data;
 
-        const pct = Math.floor((i / rawWords.length) * 100);
-        bar.style.width = pct + "%";
-        text.textContent = pct + "% complete";
+    if (msg.type === 'progress') {
+        progressBar.style.width = msg.percent + "%";
+        progressText.textContent = msg.percent + "% complete";
     }
 
-    bar.style.width = "100%";
-    text.textContent = "100% complete";
+    if (msg.type === 'done') {
+        progressBar.style.width = "100%";
+        progressText.textContent = "100% complete";
 
-    const cleanList = [...accepted].sort().join("\n");
-    const rejectedList = [...new Set(rejected)].sort().join("\n");
+        latestClean = msg.cleanList;
+        latestRejected = msg.rejectedList;
+        latestStats = msg.stats;
 
-    const stats = `
-WORDLIST CLEANING REPORT
-=========================
+        // Show results + wire buttons
+        resultsDiv.style.display = "block";
 
-Total input words:        ${rawWords.length}
-Accepted words:           ${accepted.size}
-Rejected words:           ${rejected.length}
+        document.getElementById("downloadClean").onclick = () =>
+            downloadFile("combined.txt", latestClean);
 
-Rejection breakdown:
- - Empty after cleaning:   ${rej_empty}
- - Too short (<4 chars):   ${rej_short}
- - Unsalvageable:          ${rej_unsalvageable}
+        document.getElementById("downloadRejected").onclick = () =>
+            downloadFile("rejected.txt", latestRejected);
 
-Filters applied:
- - Trim whitespace
- - Remove accents/diacritics
- - Remove non-ASCII characters
- - Lowercase
- - Remove digits
- - Remove punctuation
- - Remove words < 4 characters
- - Deduplicate
-`;
+        document.getElementById("downloadStats").onclick = () =>
+            downloadFile("stats.txt", latestStats);
 
-    document.getElementById("results").style.display = "block";
+        document.getElementById("downloadZip").onclick = () => {
+            const zip = new JSZip();
+            zip.file("combined.txt", latestClean);
+            zip.file("rejected.txt", latestRejected);
+            zip.file("stats.txt", latestStats);
 
-    // Individual downloads
-    document.getElementById("downloadClean").onclick = () =>
-        downloadFile("combined.txt", cleanList);
+            zip.generateAsync({ type: "blob" }).then((content) => {
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(content);
+                a.download = "wordlist-cleaner-output.zip";
+                a.click();
+            });
+        };
 
-    document.getElementById("downloadRejected").onclick = () =>
-        downloadFile("rejected.txt", rejectedList);
-
-    document.getElementById("downloadStats").onclick = () =>
-        downloadFile("stats.txt", stats);
-
-    // ZIP download
-    document.getElementById("downloadZip").onclick = () => {
-        const zip = new JSZip();
-        zip.file("combined.txt", cleanList);
-        zip.file("rejected.txt", rejectedList);
-        zip.file("stats.txt", stats);
-
-        zip.generateAsync({ type: "blob" }).then((content) => {
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(content);
-            a.download = "wordlist-cleaner-output.zip";
-            a.click();
-        });
-    };
-
-    setTimeout(() => {
-        progressContainer.style.display = "none";
-    }, 800);
+        setTimeout(() => {
+            progressContainer.style.display = "none";
+        }, 800);
+    }
 };
 
 // Helper: download a single file
