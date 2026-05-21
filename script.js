@@ -27,16 +27,38 @@ let files = [];
 document.getElementById("dropzone").onclick = () =>
     document.getElementById("fileInput").click();
 
-document.getElementById("fileInput").onchange = (e) =>
+document.getElementById("fileInput").onchange = (e) => {
     files = [...e.target.files];
+    showPreview();
+};
 
 document.getElementById("dropzone").ondrop = (e) => {
     e.preventDefault();
     files = [...e.dataTransfer.files];
+    showPreview();
 };
 
 document.getElementById("dropzone").ondragover = (e) => e.preventDefault();
 
+
+// ⭐ WORD COUNT PREVIEW
+async function showPreview() {
+    if (files.length === 0) return;
+
+    let count = 0;
+
+    for (const file of files) {
+        const text = await file.text();
+        count += text.split(/\r?\n/).length;
+    }
+
+    document.getElementById("preview").style.display = "block";
+    document.getElementById("previewText").textContent =
+        `Total words detected across all files: ${count.toLocaleString()}`;
+}
+
+
+// ⭐ MAIN PROCESSING
 document.getElementById("processBtn").onclick = async () => {
     if (files.length === 0) return alert("No files selected.");
 
@@ -119,6 +141,7 @@ Filters applied:
 
     document.getElementById("results").style.display = "block";
 
+    // Individual downloads
     document.getElementById("downloadClean").onclick = () =>
         downloadFile("combined.txt", cleanList);
 
@@ -128,11 +151,28 @@ Filters applied:
     document.getElementById("downloadStats").onclick = () =>
         downloadFile("stats.txt", stats);
 
+    // ⭐ ZIP DOWNLOAD
+    document.getElementById("downloadZip").onclick = () => {
+        const zip = new JSZip();
+        zip.file("combined.txt", cleanList);
+        zip.file("rejected.txt", rejectedList);
+        zip.file("stats.txt", stats);
+
+        zip.generateAsync({ type: "blob" }).then((content) => {
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(content);
+            a.download = "wordlist-cleaner-output.zip";
+            a.click();
+        });
+    };
+
     setTimeout(() => {
         progressContainer.style.display = "none";
     }, 800);
 };
 
+
+// Helper: download a single file
 function downloadFile(filename, content) {
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
