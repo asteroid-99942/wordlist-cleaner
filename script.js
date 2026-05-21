@@ -1,6 +1,5 @@
-// Normalise and clean a single word
+// Clean and normalise a single word
 function cleanWord(word) {
-    // Trim
     word = word.trim();
     if (!word) return "";
 
@@ -24,6 +23,7 @@ function cleanWord(word) {
 
 let files = [];
 
+// UI handlers
 document.getElementById("dropzone").onclick = () =>
     document.getElementById("fileInput").click();
 
@@ -41,6 +41,8 @@ document.getElementById("processBtn").onclick = async () => {
     if (files.length === 0) return alert("No files selected.");
 
     let rawWords = [];
+
+    // Read all files
     for (const file of files) {
         const text = await file.text();
         rawWords.push(...text.split(/\r?\n/));
@@ -53,30 +55,42 @@ document.getElementById("processBtn").onclick = async () => {
     let rej_short = 0;
     let rej_unsalvageable = 0;
 
-    for (let w of rawWords) {
-        const original = w;
-        let cleaned = cleanWord(w);
+    // Show progress bar
+    const progressContainer = document.getElementById("progressContainer");
+    const bar = document.getElementById("progressBarInner");
+    const text = document.getElementById("progressText");
+
+    progressContainer.style.display = "block";
+    bar.style.width = "0%";
+    text.textContent = "0% complete";
+
+    // Process words with progress updates
+    for (let i = 0; i < rawWords.length; i++) {
+        const original = rawWords[i];
+        let cleaned = cleanWord(original);
 
         if (!cleaned) {
             rej_empty++;
             rejected.push(original);
-            continue;
-        }
-
-        if (cleaned.length < 4) {
+        } else if (cleaned.length < 4) {
             rej_short++;
             rejected.push(original);
-            continue;
-        }
-
-        if (/[^a-z]/.test(cleaned)) {
+        } else if (/[^a-z]/.test(cleaned)) {
             rej_unsalvageable++;
             rejected.push(original);
-            continue;
+        } else {
+            accepted.add(cleaned);
         }
 
-        accepted.add(cleaned);
+        // Update progress bar
+        const pct = Math.floor((i / rawWords.length) * 100);
+        bar.style.width = pct + "%";
+        text.textContent = pct + "% complete";
     }
+
+    // Finish progress bar
+    bar.style.width = "100%";
+    text.textContent = "100% complete";
 
     // Prepare outputs
     const cleanList = [...accepted].sort().join("\n");
@@ -106,7 +120,7 @@ Filters applied:
  - Deduplicate
 `;
 
-    // Enable downloads
+    // Enable download buttons
     document.getElementById("results").style.display = "block";
 
     document.getElementById("downloadClean").onclick = () =>
@@ -117,8 +131,14 @@ Filters applied:
 
     document.getElementById("downloadStats").onclick = () =>
         downloadFile("stats.txt", stats);
+
+    // Hide progress bar after finishing
+    setTimeout(() => {
+        progressContainer.style.display = "none";
+    }, 800);
 };
 
+// Download helper
 function downloadFile(filename, content) {
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
