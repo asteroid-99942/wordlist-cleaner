@@ -34,14 +34,23 @@ dropzone.ondrop = async (e) => {
 
 dropzone.ondragover = (e) => e.preventDefault();
 
-// Word count preview
+// UNIVERSAL TOKENIZER (same as worker)
+// Splits on ANY non-letter, including commas, spaces, punctuation, tabs, pipes, etc.
+function tokenize(text) {
+    return text
+        .split(/[^A-Za-zÀ-ÿ]+/)
+        .filter(w => w.trim().length > 0);
+}
+
+// Word count preview (now accurate for comma-separated lists)
 async function showPreview() {
     if (files.length === 0) return;
 
     let count = 0;
     for (const file of files) {
         const text = await file.text();
-        count += text.split(/\r?\n/).length;
+        const words = tokenize(text);
+        count += words.length;
     }
 
     previewDiv.style.display = "block";
