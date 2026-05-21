@@ -28,7 +28,7 @@ onmessage = (e) => {
     if (msg.type === 'process') {
 
         // ⭐ Split inside the worker (MUCH faster for millions of lines)
-        const rawWords = msg.text.split(/\r?\n/);
+        const rawWords = msg.text.split(/[\n,;|\t ]+/).filter(w => w.trim().length > 0);
 
         let accepted = new Set();
         let rejected = [];
