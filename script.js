@@ -82,17 +82,14 @@ document.getElementById("processBtn").onclick = async () => {
             accepted.add(cleaned);
         }
 
-        // Update progress bar
         const pct = Math.floor((i / rawWords.length) * 100);
         bar.style.width = pct + "%";
         text.textContent = pct + "% complete";
     }
 
-    // Finish progress bar
     bar.style.width = "100%";
     text.textContent = "100% complete";
 
-    // Prepare outputs
     const cleanList = [...accepted].sort().join("\n");
     const rejectedList = [...new Set(rejected)].sort().join("\n");
 
@@ -120,7 +117,6 @@ Filters applied:
  - Deduplicate
 `;
 
-    // Enable download buttons
     document.getElementById("results").style.display = "block";
 
     document.getElementById("downloadClean").onclick = () =>
@@ -132,13 +128,11 @@ Filters applied:
     document.getElementById("downloadStats").onclick = () =>
         downloadFile("stats.txt", stats);
 
-    // Hide progress bar after finishing
     setTimeout(() => {
         progressContainer.style.display = "none";
     }, 800);
 };
 
-// Download helper
 function downloadFile(filename, content) {
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
