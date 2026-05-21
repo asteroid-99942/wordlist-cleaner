@@ -21,11 +21,14 @@ function cleanWord(word) {
     return word;
 }
 
+// MAIN WORKER ENTRY POINT
 onmessage = (e) => {
     const msg = e.data;
 
     if (msg.type === 'process') {
-        const rawWords = msg.rawWords;
+
+        // ⭐ Split inside the worker (MUCH faster for millions of lines)
+        const rawWords = msg.text.split(/\r?\n/);
 
         let accepted = new Set();
         let rejected = [];
@@ -54,6 +57,7 @@ onmessage = (e) => {
                 accepted.add(cleaned);
             }
 
+            // Send progress updates
             if (i % progressStep === 0) {
                 const percent = Math.floor((i / total) * 100);
                 postMessage({ type: 'progress', percent });
@@ -87,6 +91,7 @@ Filters applied:
  - Deduplicate
 `;
 
+        // Send final result back to main thread
         postMessage({
             type: 'done',
             cleanList,
