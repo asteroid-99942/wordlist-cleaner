@@ -53,6 +53,25 @@ processBtn.onclick = async () => {
         return;
     }
 
+    // Read all files into one big string
+    let bigText = "";
+    for (const file of files) {
+        bigText += await file.text() + "\n";
+    }
+
+    // Reset UI
+    resultsDiv.style.display = "none";
+    progressContainer.style.display = "block";
+    progressBar.style.width = "0%";
+    progressText.textContent = "0% complete";
+
+    // Send big text to worker
+    worker.postMessage({
+        type: 'process',
+        text: bigText
+    });
+};
+
     // Read all files into one big array of lines
     let rawWords = [];
     for (const file of files) {
