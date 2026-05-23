@@ -37,7 +37,7 @@ https://asteroid-99942.github.io/wordlist-cleaner/
 ## 🚀 How It Works
 
 1. Drag‑and‑drop one or more `.txt` wordlists into the dropzone  
-2. The tool shows a **word count preview**  
+2. The tool shows a **word count preview**  (There maybe a slight delay before this appears if you are working with numerous large files)
 3. Click **Process Wordlists**  
 4. A Web Worker processes the data in the background  
 5. The progress bar updates as the worker runs  
