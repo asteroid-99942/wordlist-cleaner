@@ -55,7 +55,8 @@ async function showPreview() {
 
     previewDiv.style.display = "block";
     previewText.textContent =
-        `Total words detected across all files: ${count.toLocaleString()}`;
+        `This is the total number of lines found in your files.
+The final cleaned list will contain fewer items.: ${count.toLocaleString()}`;
 }
 
 // Main processing – offloaded to worker
